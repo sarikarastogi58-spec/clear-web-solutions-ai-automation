@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clear Web Solutions CRM</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f7fb; color: #111; }
+      header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      h1 { margin: 0; font-size: 24px; }
+      .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+      input, select, textarea, button { width: 100%; margin: 4px 0 12px; padding: 10px; border-radius: 8px; border: 1px solid #ccd6e7; }
+      button { cursor: pointer; background: #2563eb; color: white; border: none; }
+      button.secondary { background: #64748b; }
+      .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .table { width: 100%; border-collapse: collapse; }
+      .table th, .table td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+      .status-pill { display: inline-flex; padding: 3px 8px; border-radius: 999px; font-size: 12px; background: #e2e8f0; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Clear Web Solutions CRM</h1>
+        <p>Lead discovery, scoring, outreach, and analytics for local businesses.</p>
+      </div>
+      <button onclick="loadLeads()">Refresh Leads</button>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Create lead</h2>
+        <form id="leadForm">
+          <input id="business_name" placeholder="Business name" required />
+          <input id="category" placeholder="Category" required />
+          <input id="city" placeholder="City" required />
+          <input id="phone" placeholder="Phone" />
+          <input id="email" placeholder="Email" />
+          <input id="website" placeholder="Website" />
+          <input id="rating" placeholder="Rating" />
+          <input id="review_count" type="number" placeholder="Review count" />
+          <button type="submit">Add Lead</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Analytics</h2>
+        <div id="analytics"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Leads</h2>
+      <table class="table" id="leadsTable">
+        <thead>
+          <tr><th>Business</th><th>City</th><th>Status</th><th>Priority</th><th>Score</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <script>
+      const apiUrl = "/api";
+
+      async function loadAnalytics() {
+        const resp = await fetch(`${apiUrl}/analytics`);
+        const data = await resp.json();
+        document.getElementById("analytics").innerHTML = `
+          <p>Total leads: ${data.total_leads}</p>
+          <p>High priority: ${data.high_priority_leads}</p>
+          <p>Messages sent: ${data.messages_sent}</p>
+          <p>Replies received: ${data.replies_received}</p>
+          <p>Interested leads: ${data.interested_leads}</p>
+          <p>Conversion rate: ${data.conversion_rate}%</p>
+        `;
+      }
+
+      async function loadLeads() {
+        const resp = await fetch(`${apiUrl}/leads`);
+        const leads = await resp.json();
+        const tbody = document.querySelector("#leadsTable tbody");
+        tbody.innerHTML = "";
+        leads.forEach((lead) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${lead.business_name}</td>
+            <td>${lead.city}</td>
+            <td><span class="status-pill">${lead.status}</span></td>
+            <td>${lead.priority}</td>
+            <td>${lead.score}</td>
+            <td>
+              <button onclick="buildMessage(${lead.id})">Build msg</button>
+              <button onclick="scoreLead(${lead.id})" class="secondary">Score</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      async function scoreLead(id) {
+        await fetch(`${apiUrl}/leads/${id}/score`, { method: "POST" });
+        loadLeads();
+        loadAnalytics();
+      }
+
+      async function buildMessage(id) {
+        const resp = await fetch(`${apiUrl}/outreach/message/${id}`);
+        const data = await resp.json();
+        alert(data.message);
+      }
+
+      document.getElementById("leadForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const values = ["business_name", "category", "city", "phone", "email", "website", "rating", "review_count"].reduce((acc, id) => {
+          acc[id] = document.getElementById(id).value;
+          return acc;
+        }, {});
+        await fetch(`${apiUrl}/leads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        });
+        event.target.reset();
+        loadLeads();
+        loadAnalytics();
+      });
+
+      loadLeads();
+      loadAnalytics();
+    </script>
+  </body>
+</html>
