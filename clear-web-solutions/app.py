@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from database import Base, SessionLocal, engine, get_db
+from database import Base, engine, get_db
 from models import Conversation, FollowUp, Lead, OutreachHistory
 from schemas import (
     Analytics,
@@ -161,8 +161,8 @@ def record_message(lead_id: int, payload: ConversationCreate, db: Session = Depe
 
 
 @app.post("/api/inbound/reply")
-def inbound_reply(request: Request, db: Session = Depends(get_db)):
-    payload = request.json()
+async def inbound_reply(request: Request, db: Session = Depends(get_db)):
+    payload = await request.json()
     text = payload.get("text")
     phone = payload.get("phone")
     if not text or not phone:
